@@ -10,8 +10,9 @@
 //	== file2
 //	file2 content
 //
-// The separator here is -- because that's how the archive starts.
-// The Format() function automatically picks a separator that is unique and won't conflict with existing file values.
+// The separator here is == because that's how the archive starts.
+// The [Format] function automatically picks a separator that is unique and won't conflict with existing file values.
+// Use [Parse] to parse it back into a slice of [File] entries.
 package textar
 
 import (

@@ -1,3 +1,4 @@
+// The seq command demonstrates the usage of the textar library, see seq.textar for the details.
 package main
 
 import (

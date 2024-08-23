@@ -38,7 +38,9 @@ func TestTextar(t *testing.T) {
 	if err != nil || bytes.Compare(contents, srcArchive[2].Data) != 0 {
 		t.Errorf("Inconsistent content in somedir/file3.")
 	}
-	if matches, _ := fs.Glob(dir, "*"); len(matches) != 4 {
+	matches, _ := fs.Glob(dir, "*")
+	t.Logf("Glob() output: %q.", matches)
+	if len(matches) != 4 {
 		t.Errorf("Glob() = %d, want %d.\n", len(matches), 4)
 	}
 }

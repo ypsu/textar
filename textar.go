@@ -141,7 +141,7 @@ func (fo FormatOptions) Format(archive []File) []byte {
 func FS(archive []File) fstest.MapFS {
 	fs := fstest.MapFS{}
 	for _, f := range archive {
-		fs[f.Name] = &fstest.MapFile{Data: f.Data, Mode: 0644}
+		fs[strings.TrimPrefix(f.Name, "/")] = &fstest.MapFile{Data: f.Data, Mode: 0644}
 	}
 	return fs
 }

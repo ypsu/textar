@@ -29,6 +29,7 @@ import (
 	"bytes"
 	"math"
 	"strings"
+	"testing/fstest"
 )
 
 // File represents a single entry in the text archive.
@@ -133,6 +134,16 @@ func (fo FormatOptions) Format(archive []File) []byte {
 		buffer.Write(f.Data)
 	}
 	return buffer.Bytes()
+}
+
+// FS returns an object implementing [fs.FS] built from the contents of an archive.
+// This is a helper function for tests.
+func FS(archive []File) fstest.MapFS {
+	fs := fstest.MapFS{}
+	for _, f := range archive {
+		fs[f.Name] = &fstest.MapFile{Data: f.Data, Mode: 0644}
+	}
+	return fs
 }
 
 // Indent is a convenience function to indent data.

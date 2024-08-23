@@ -16,7 +16,7 @@ import (
 var seqdata []byte
 
 func run() error {
-	archive := textar.Parse(seqdata)
+	archive := textar.ParseOptions{ParseComments: true}.Parse(seqdata)
 	for i, f := range archive {
 		if strings.HasPrefix(f.Name, "#") {
 			continue

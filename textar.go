@@ -9,10 +9,18 @@
 //	file1 content
 //	== file2
 //	file2 content
+//	== # some comment title
+//	some comment body.
+//	== file3
+//	file3 content.
 //
 // The separator here is == because that's how the archive starts.
 // The [Format] function automatically picks a separator that is unique and won't conflict with existing file values.
 // Use [Parse] to parse it back into a slice of [File] entries.
+//
+// By default textar skips parsing entries starting with #.
+// They can be used as comments.
+// This behavior can be altered with [ParseOptions].
 //
 // See https://github.com/ypsu/textar/blob/main/example/seq.textar for a longer example.
 package textar
@@ -31,6 +39,8 @@ type File struct {
 
 // ParseOptions allows customizing the parsing.
 type ParseOptions struct {
+	// If true, textar won't skip entries that have a name starting with # or have an empty name.
+	ParseComments bool
 	// Parse appends the resulting Files to this buffer.
 	Buffer []File
 }
@@ -48,6 +58,8 @@ type FormatOptions struct {
 }
 
 // Parse data with the default settings.
+// Note by default textar skips entries that start with the # comment marker.
+// Use [ParseOptions] to alter this.
 func Parse(data []byte) []File {
 	return ParseOptions{}.Parse(data)
 }
@@ -66,6 +78,9 @@ func (po ParseOptions) Parse(data []byte) []File {
 			return archive
 		}
 		filedata, data, _ = bytes.Cut(data, sep)
+		if !po.ParseComments && (len(name) == 0 || name[0] == '#') {
+			continue
+		}
 		archive = append(archive, File{string(name), filedata})
 	}
 	return archive

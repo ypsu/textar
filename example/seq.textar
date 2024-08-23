@@ -1,9 +1,9 @@
-== # seq output
+== # description
 This example runs `seq` in various ways and captures the output.
 
 Note that unlike https://pkg.go.dev/golang.org/x/tools/txtar textar doesn't support archive comments.
 That's because it uses the first token in the archive to determine the separator character.
-But conventions can help: simply filter out files starting with #.
+But conventions can help: simply filter out files starting with # which textar does by default.
 
 == seq 2 3
 2
@@ -15,7 +15,7 @@ A nice thing about # filtering convention is that you can have notes within a te
 == seq -s. 8 2 12
 8.10.12
 
-== # note
+== # another note
 There's no restriction what the filename can be other than it cannot contain a newline.
 
 == seq -w 8 12

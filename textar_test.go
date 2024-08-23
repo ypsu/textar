@@ -13,6 +13,7 @@ func TestTextar(t *testing.T) {
 		{"file1", []byte("content 1")},
 		{"file2", []byte("content 2\n")},
 		{"somedir/file3", []byte("content 3\n== with separator\n")},
+		{"/file4", nil},
 	}
 	data := textar.Format(srcArchive)
 	t.Logf("Encoded textar:\n%s", data)
@@ -37,8 +38,8 @@ func TestTextar(t *testing.T) {
 	if err != nil || bytes.Compare(contents, srcArchive[2].Data) != 0 {
 		t.Errorf("Inconsistent content in somedir/file3.")
 	}
-	if matches, _ := fs.Glob(dir, "*"); len(matches) != 3 {
-		t.Errorf("Glob() = %d, want %d.\n", len(matches), 3)
+	if matches, _ := fs.Glob(dir, "*"); len(matches) != 4 {
+		t.Errorf("Glob() = %d, want %d.\n", len(matches), 4)
 	}
 }
 

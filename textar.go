@@ -136,7 +136,7 @@ func (fo FormatOptions) Format(archive []File) []byte {
 	return buffer.Bytes()
 }
 
-// FS returns an object implementing [fs.FS] built from the contents of an archive.
+// FS returns an object implementing [io/fs.FS] built from the contents of an archive.
 // This is a helper function for tests.
 func FS(archive []File) fstest.MapFS {
 	fs := fstest.MapFS{}

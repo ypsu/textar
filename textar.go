@@ -9,7 +9,7 @@
 //	file1 content
 //	== file2
 //	file2 content
-//	== # some comment title
+//	== # some comment
 //	some comment body.
 //	== file3
 //	file3 content.
@@ -23,6 +23,7 @@
 // This behavior can be altered with [ParseOptions].
 //
 // See https://github.com/ypsu/textar/blob/main/example/seq.textar for a longer example.
+// See the testdata directory of https://github.com/ypsu/pkgtrim for a more realistic example.
 package textar
 
 import (

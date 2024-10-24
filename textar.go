@@ -24,6 +24,8 @@
 //
 // See https://github.com/ypsu/textar/blob/main/example/seq.textar for a longer example.
 // See the testdata directory of https://github.com/ypsu/pkgtrim for a more realistic example.
+//
+// Comes with a command line tool as well, check out [github.com/ypsu/textar/bin/textar].
 package textar
 
 import (

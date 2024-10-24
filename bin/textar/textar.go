@@ -8,6 +8,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/ypsu/textar"
 )
@@ -110,19 +111,32 @@ func update(fn string, args []string) error {
 	return os.WriteFile(fn, fo.Format(ar), 0644) // io error contains both the action and error
 }
 
+func subdir(dir, file string) bool {
+	if strings.HasSuffix(dir, "/") {
+		return strings.HasPrefix(file, dir)
+	}
+	r, found := strings.CutPrefix(file, dir)
+	return found && strings.HasPrefix(r, "/")
+}
+
 func extract(fn string, args []string) error {
 	data, err := os.ReadFile(fn)
 	if err != nil {
 		return err // io error contains both the action and error
 	}
 
-	selection := map[string]bool{}
-	for _, arg := range args {
-		selection[arg] = true
-	}
-
 	for _, f := range textar.Parse(data) {
-		if len(selection) > 0 && !selection[f.Name] {
+		ok := true
+		if len(args) > 0 {
+			ok = false
+			for _, a := range args {
+				if f.Name == a || subdir(a, f.Name) {
+					ok = true
+					break
+				}
+			}
+		}
+		if !ok {
 			continue
 		}
 		if err := os.MkdirAll(filepath.Dir(f.Name), 0755); err != nil {

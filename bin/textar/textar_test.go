@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"os"
 	"testing"
 )
@@ -48,6 +49,7 @@ func TestExtract(t *testing.T) {
 	os.Chdir(t.TempDir())
 	check(t, os.WriteFile("ar.textar", []byte("== testdir/testfile1\ntestcontent1\n== testdir/testdir2/testfile3\ntestcontent3"), 0644))
 
+	check(t, os.RemoveAll("testdir"))
 	check(t, extract("ar.textar", []string{"testdir/testdir2/testfile3"}))
 	check(t, create("test.textar", []string{"testdir"}))
 	data, err := os.ReadFile("test.textar")
@@ -56,11 +58,54 @@ func TestExtract(t *testing.T) {
 		t.Fatalf("Invalid extract() result:\ngot:  %q\nwant: %q", got, want)
 	}
 
+	check(t, os.RemoveAll("testdir"))
+	check(t, extract("ar.textar", []string{"testdir/testdir2"}))
+	check(t, create("test.textar", []string{"testdir"}))
+	data, err = os.ReadFile("test.textar")
+	check(t, err)
+	if got, want := string(data), "== testdir/testdir2/testfile3\ntestcontent3"; got != want {
+		t.Fatalf("Invalid extract() result:\ngot:  %q\nwant: %q", got, want)
+	}
+
+	check(t, os.RemoveAll("testdir"))
+	check(t, extract("ar.textar", []string{"testdir/testfile1"}))
+	check(t, create("test.textar", []string{"testdir"}))
+	data, err = os.ReadFile("test.textar")
+	check(t, err)
+	if got, want := string(data), "== testdir/testfile1\ntestcontent1"; got != want {
+		t.Fatalf("Invalid extract() result:\ngot:  %q\nwant: %q", got, want)
+	}
+
+	check(t, os.RemoveAll("testdir"))
+	check(t, extract("ar.textar", []string{"testdir"}))
+	check(t, create("test.textar", []string{"testdir"}))
+	data, err = os.ReadFile("test.textar")
+	check(t, err)
+	if got, want := string(data), "== testdir/testdir2/testfile3\ntestcontent3\n== testdir/testfile1\ntestcontent1"; got != want {
+		t.Fatalf("Invalid extract() result:\ngot:  %q\nwant: %q", got, want)
+	}
+
+	check(t, os.RemoveAll("testdir"))
+	check(t, extract("ar.textar", []string{"testdir/"}))
+	check(t, create("test.textar", []string{"testdir"}))
+	data, err = os.ReadFile("test.textar")
+	check(t, err)
+	if got, want := string(data), "== testdir/testdir2/testfile3\ntestcontent3\n== testdir/testfile1\ntestcontent1"; got != want {
+		t.Fatalf("Invalid extract() result:\ngot:  %q\nwant: %q", got, want)
+	}
+
+	check(t, os.RemoveAll("testdir"))
 	check(t, extract("ar.textar", nil))
 	check(t, create("test.textar", []string{"testdir"}))
 	data, err = os.ReadFile("test.textar")
 	check(t, err)
 	if got, want := string(data), "== testdir/testdir2/testfile3\ntestcontent3\n== testdir/testfile1\ntestcontent1"; got != want {
 		t.Fatalf("Invalid extract() result:\ngot:  %q\nwant: %q", got, want)
+	}
+
+	check(t, os.RemoveAll("testdir"))
+	check(t, extract("ar.textar", []string{"testdi"}))
+	if _, err := os.Stat("testdir"); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("Invalid extract() result (erroneously matched subdir?): %v", err)
 	}
 }

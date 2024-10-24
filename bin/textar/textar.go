@@ -1,5 +1,5 @@
 // textar converts to and extracts from textar files.
-// See [Usage].
+// Use -help to see the usage.
 package main
 
 import (
@@ -18,8 +18,7 @@ var (
 	flagX = flag.String("x", "", "Extract all or the specified files to the current directory. Use - to decompress stdin.")
 )
 
-// Usage prints the usage information of the tool.
-func Usage() {
+func usage() {
 	fmt.Fprintln(flag.CommandLine.Output(), "Manipulate .textar files.")
 	fmt.Fprintln(flag.CommandLine.Output(), "")
 	fmt.Fprintln(flag.CommandLine.Output(), "Create a textar file:  textar -c=archive.textar file1 file2 file3")
@@ -139,9 +138,9 @@ func extract(fn string, args []string) error {
 
 func run() error {
 	if len(os.Args) <= 1 {
-		Usage()
+		usage()
 	}
-	flag.Usage = Usage
+	flag.Usage = usage
 	flag.Parse()
 
 	flagcnt := 0

@@ -5,3 +5,5 @@ See https://pkg.go.dev/github.com/ypsu/textar for the documentation.
 
 Note: this project uses https://ypsu.github.io/featver as its versioning scheme.
 The project will enter the more stable v1 version only when it has users already.
+
+Comes with a command line tool as well, check out https://pkg.go.dev/github.com/ypsu/textar/bin/textar.

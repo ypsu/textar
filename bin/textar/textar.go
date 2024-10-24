@@ -18,7 +18,8 @@ var (
 	flagX = flag.String("x", "", "Extract all or the specified files to the current directory. Use - to decompress stdin.")
 )
 
-func usage() {
+// Usage prints the usage information of the tool.
+func Usage() {
 	fmt.Fprintln(flag.CommandLine.Output(), "Manipulate .textar files.")
 	fmt.Fprintln(flag.CommandLine.Output(), "")
 	fmt.Fprintln(flag.CommandLine.Output(), "Create a textar file:  textar -c=archive.textar file1 file2 file3")
@@ -138,9 +139,9 @@ func extract(fn string, args []string) error {
 
 func run() error {
 	if len(os.Args) <= 1 {
-		usage()
+		Usage()
 	}
-	flag.Usage = usage
+	flag.Usage = Usage
 	flag.Parse()
 
 	flagcnt := 0

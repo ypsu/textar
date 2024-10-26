@@ -120,6 +120,9 @@ func subdir(dir, file string) bool {
 }
 
 func extract(fn string, args []string) error {
+	if fn == "-" {
+		fn = "/dev/stdin"
+	}
 	data, err := os.ReadFile(fn)
 	if err != nil {
 		return err // io error contains both the action and error

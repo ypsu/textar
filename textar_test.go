@@ -9,47 +9,43 @@ import (
 )
 
 func TestTextar(t *testing.T) {
-	srcArchive := []textar.File{
-		{"file1", []byte("content 1")},
-		{"file2", []byte("content 2\n")},
-		{"somedir/file3", []byte("content 3\n== with separator\n")},
-		{"/file4", nil},
+	srcArchive := textar.Archive{
+		Comment: []byte("Test comment."),
+		Files: []textar.File{
+			{"file1", []byte("content 1")},
+			{"file2", []byte("content 2\n")},
+			{"somedir/file3", []byte("content 3\n== with separator\n")},
+			{"/file4", nil},
+		},
 	}
-	data := textar.Format(srcArchive)
+	data := srcArchive.Format()
 	t.Logf("Encoded textar:\n%s", data)
 
 	dstArchive := textar.Parse(data)
-	if len(dstArchive) != len(srcArchive) {
-		t.Fatalf("Archive size = %d, want %d.", len(dstArchive), len(srcArchive))
+	if !bytes.Equal(dstArchive.Comment, srcArchive.Comment) {
+		t.Fatalf("textar_test.BadComment got=%q want=%q", dstArchive.Comment, srcArchive.Comment)
 	}
-	for i := range dstArchive {
-		if dstArchive[i].Name != srcArchive[i].Name || !bytes.Equal(dstArchive[i].Data, srcArchive[i].Data) {
-			t.Errorf("dst[i] = {%q, %q}, want {%q, %q}.", dstArchive[i].Name, dstArchive[i].Data, srcArchive[i].Name, srcArchive[i].Data)
+	if len(dstArchive.Files) != len(srcArchive.Files) {
+		t.Fatalf("textar_test.BadArchiveSize got=%d want=%d", len(dstArchive.Files), len(srcArchive.Files))
+	}
+	for i := range dstArchive.Files {
+		if dstArchive.Files[i].Name != srcArchive.Files[i].Name || !bytes.Equal(dstArchive.Files[i].Data, srcArchive.Files[i].Data) {
+			t.Errorf("textar_test.BadContent dst[%d]={%q,%q} want={%q,%q}", i, dstArchive.Files[i].Name, dstArchive.Files[i].Data, srcArchive.Files[i].Name, srcArchive.Files[i].Data)
 		}
 	}
 
-	var dir fs.FS
-	dir = textar.FS(srcArchive)
+	dir := srcArchive.FS()
 	_, err := fs.ReadFile(dir, "somedir/nonexistent")
 	if err == nil {
 		t.Errorf("Reading somedir/nonexistent didn't return an error.")
 	}
 	contents, err := fs.ReadFile(dir, "somedir/file3")
-	if err != nil || bytes.Compare(contents, srcArchive[2].Data) != 0 {
+	if err != nil || bytes.Compare(contents, srcArchive.Files[2].Data) != 0 {
 		t.Errorf("Inconsistent content in somedir/file3.")
 	}
 	matches, _ := fs.Glob(dir, "*")
 	t.Logf("Glob() output: %q.", matches)
 	if len(matches) != 4 {
 		t.Errorf("Glob() = %d, want %d.\n", len(matches), 4)
-	}
-}
-
-func TestIndent(t *testing.T) {
-	src, indent := []byte("some\nXXindented\nstring"), "XX"
-	dst := textar.Unindent(textar.Indent(src, indent), indent)
-	t.Logf("Indented string: %q.", textar.Indent(src, indent))
-	if !bytes.Equal(dst, src) {
-		t.Errorf("Unindent() = %q, want %q.", dst, src)
 	}
 }

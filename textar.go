@@ -1,26 +1,29 @@
 // Package textar encodes a file list (key-value slice) into a human editable text file and vice versa.
-// This is inspired by https://pkg.go.dev/golang.org/x/tools/txtar but this format can encode any content without issues.
-// Each file in a textar is encoded via "[SEP] [NAME]\n[CONTENT]\n".
-// The first SEP in the file determines the SEP for the whole file.
-// SEP cannot contain space or newline.
+// This is inspired by https://pkg.go.dev/golang.org/x/tools/txtar but this format can encode any content perfectly without issues.
+// Go's txtar doesn't handle newlines and content containing txtar markers well.
+// In textar each file in a textar is encoded via "[SEP] [NAME]\n[CONTENT]\n".
+// SEP is two or more = signs.
+// The first SEP can be arbitrary length, the rest must be the same length.
+// The first line beginning with == determines the separator length.
+// The dynamic SEP-lengtha makes it possible to encode and decode anything perfectly, this is the main advantage over Go's txtar.
+// Furthermore anything before the first SEP is free form comment.
 // Example:
 //
-//	== file1
-//	file1 content
-//	== file2
-//	file2 content
-//	== # some comment
-//	some comment body.
+//	Some comments here.
+//
+//	=== file1
+//	file1 content.
+//
+//	=== file2
+//	file2 content.
 //	== file3
-//	file3 content.
+//	this is a textar within textar.
 //
-// The separator here is == because that's how the archive starts.
-// The [Format] function automatically picks a separator that is unique and won't conflict with existing file values.
-// Use [Parse] to parse it back into a slice of [File] entries.
+// The separator here is === so this textar contains file1 and file2.
+// file3 is not part of the main textar, it just shows that file2 could be a textar itself.
 //
-// By default textar skips parsing entries starting with #.
-// They can be used as comments.
-// This behavior can be altered with [ParseOptions].
+// The [Archive.Format] function automatically picks a separator length that is unique and won't conflict with existing file values.
+// Use [Parse] to parse it back.
 //
 // See https://github.com/ypsu/textar/blob/main/example/seq.textar for a longer example.
 // See the testdata directory of https://github.com/ypsu/pkgtrim for a more realistic example.
@@ -28,138 +31,141 @@ package textar
 
 import (
 	"bytes"
+	"fmt"
+	"iter"
 	"math"
+	"os"
 	"strings"
 	"testing/fstest"
 )
 
-// File represents a single entry in the text archive.
+// A File is a single file in an archive.
 type File struct {
 	Name string
 	Data []byte
 }
 
-// ParseOptions allows customizing the parsing.
-type ParseOptions struct {
-	// If true, textar won't skip entries that have a name starting with # or have an empty name.
-	ParseComments bool
-	// Parse appends the resulting Files to this buffer.
-	Buffer []File
+// An Archive is a collection of files.
+type Archive struct {
+	Comment []byte
+	Files   []File
 }
 
-// FormatOptions allows customizing the formatting.
-type FormatOptions struct {
-	// The byte which gets repeated and then used to separate the Files.
-	// Defaults to '=' if unspecified or set to an invalid value.
-	Separator byte
-
-	// Format appends the resulting data to this buffer.
-	// Use this to reduce memory allocations.
-	// Don't use it for concatenating textars, it won't work.
-	Buffer []byte
-}
-
-// Parse data with the default settings.
-// Note by default textar skips entries that start with the # comment marker.
-// Use [ParseOptions] to alter this.
-func Parse(data []byte) []File {
-	return ParseOptions{}.Parse(data)
-}
-
-// Parse data with custom settings.
-func (po ParseOptions) Parse(data []byte) []File {
-	var sep, name, filedata []byte
-	archive := po.Buffer
-
-	sep, data, _ = bytes.Cut(data, []byte(" "))
-	sep = append(append([]byte("\n"), sep...), ' ')
-	for len(data) > 0 {
-		var ok bool
-		name, data, ok = bytes.Cut(data, []byte("\n"))
-		if !ok {
-			return archive
-		}
-		filedata, data, _ = bytes.Cut(data, sep)
-		if !po.ParseComments && (len(name) == 0 || name[0] == '#') {
-			continue
-		}
-		archive = append(archive, File{string(name), filedata})
+// Parse parses the serialized form of an Archive. The returned Archive holds slices of data.
+func Parse(data []byte) *Archive {
+	a, p := &Archive{}, data
+	if len(data) <= 2 {
+		a.Comment = p
+		return a
 	}
-	return archive
+
+	// Find the separator string.
+	sep := make([]byte, 0, 5)
+	sep = append(sep, '\n', '=', '=')
+	if p[0] == '=' && p[1] == '=' {
+		p = p[2:]
+	} else {
+		var ok bool
+		a.Comment, p, ok = bytes.Cut(p, []byte("\n=="))
+		if !ok {
+			// Empty textar, treat the whole file as a big comment.
+			a.Comment = data
+			return a
+		}
+	}
+	for len(p) > 0 && p[0] == '=' {
+		p, sep = p[1:], append(sep, '=')
+	}
+	if len(p) == 0 || p[0] != ' ' {
+		// Invalid textar, treat the whole file as a big comment.
+		a.Comment = data
+		return a
+	}
+	sep, p = append(sep, ' '), p[1:]
+
+	// Populate the Files field.
+	for {
+		var name, data []byte
+		var ok bool
+		name, p, ok = bytes.Cut(p, []byte("\n"))
+		if !ok {
+			break
+		}
+		data, p, _ = bytes.Cut(p, sep)
+		a.Files = append(a.Files, File{string(name), data})
+	}
+	return a
 }
 
-// Format an archive into a byte stream with the default settings.
-func Format(archive []File) []byte {
-	return FormatOptions{}.Format(archive)
+// ParseFile parses the named file as an archive.
+func ParseFile(file string) (*Archive, error) {
+	data, err := os.ReadFile(file)
+	if err != nil {
+		return nil, fmt.Errorf("textar.ReadFile: %v", err)
+	}
+	return Parse(data), nil
 }
 
 // Format an archive into a byte stream with custom settings.
-func (fo FormatOptions) Format(archive []File) []byte {
-	if len(archive) == 0 {
-		return fo.Buffer
+func (a *Archive) Format() []byte {
+	if a == nil {
+		return nil
 	}
-
-	var (
-		separator []byte                       // the full separator starting with a newline and a run of the separator byte
-		buffer    = bytes.NewBuffer(fo.Buffer) // the result
-	)
 
 	// Compute the separator.
-	sepcnt, sepchar := 2, fo.Separator
-	if sepchar == 0 || sepchar == '\n' {
-		sepchar = '='
-	}
-	for _, f := range archive {
+	separator := []byte{'\n'} // the full separator: newline, equal signs, space
+	sepcnt := 2
+	for _, f := range a.Files {
 		run := math.MinInt
 		for _, ch := range f.Data {
 			switch ch {
 			case '\n':
-				run = 0
-			case sepchar:
-				run, sepcnt = run+1, max(sepcnt, run+2)
+				run = 1
+			case '=':
+				run++
+			case ' ':
+				sepcnt = max(sepcnt, run)
 			default:
 				run = math.MinInt
 			}
 		}
 	}
-	separator = append(bytes.Repeat([]byte{sepchar}, sepcnt), ' ')
+	separator = append(separator, bytes.Repeat([]byte{'='}, sepcnt)...)
+	separator = append(separator, ' ')
 
 	// Generate the archive.
-	for i, f := range archive {
-		if i != 0 {
-			buffer.WriteByte('\n')
+	p := &bytes.Buffer{}
+	p.Write(a.Comment)
+	for i, f := range a.Files {
+		if i == 0 && len(a.Comment) == 0 {
+			p.Write(separator[1:])
+		} else {
+			p.Write(separator)
 		}
-		buffer.Write(separator)
-		buffer.WriteString(strings.ReplaceAll(f.Name, "\n", `\n`))
-		buffer.WriteByte('\n')
-		buffer.Write(f.Data)
+		p.WriteString(strings.ReplaceAll(f.Name, "\n", `\n`))
+		p.WriteByte('\n')
+		p.Write(f.Data)
 	}
-	return buffer.Bytes()
+	return p.Bytes()
+}
+
+// Range iterates over the Files.
+func (a *Archive) Range() iter.Seq2[string, []byte] {
+	return func(yield func(name string, data []byte) bool) {
+		for _, file := range a.Files {
+			if !yield(file.Name, file.Data) {
+				return
+			}
+		}
+	}
 }
 
 // FS returns an object implementing [io/fs.FS] built from the contents of an archive.
 // This is a helper function for tests.
-func FS(archive []File) fstest.MapFS {
+func (a *Archive) FS() fstest.MapFS {
 	fs := fstest.MapFS{}
-	for _, f := range archive {
-		fs[strings.TrimPrefix(f.Name, "/")] = &fstest.MapFile{Data: f.Data, Mode: 0644}
+	for name, data := range a.Range() {
+		fs[strings.TrimPrefix(name, "/")] = &fstest.MapFile{Data: data, Mode: 0644}
 	}
 	return fs
-}
-
-// Indent is a convenience function to indent data.
-// Note that textar doesn't need this but indenting makes a textar easier to read if it contains embedded textars.
-func Indent(data []byte, indent string) []byte {
-	if indent == "" || len(data) == 0 {
-		return data
-	}
-	return append([]byte(indent), bytes.ReplaceAll(data, []byte("\n"), []byte("\n"+indent))...)
-}
-
-// Unindent is a convenience function to undo Indent.
-func Unindent(data []byte, indent string) []byte {
-	if indent == "" {
-		return data
-	}
-	return bytes.TrimPrefix(bytes.ReplaceAll(data, []byte("\n"+indent), []byte("\n")), []byte(indent))
 }

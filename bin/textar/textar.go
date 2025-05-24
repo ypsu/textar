@@ -15,7 +15,7 @@ import (
 
 var (
 	flagC = flag.String("c", "", "Create a textar file in this file. Use - to write to stdout.")
-	flagU = flag.String("u", "", "Update or extend the specified textar file with the files specified as arguments. Preserves comments.")
+	flagU = flag.String("u", "", "Update or extend the specified textar file with the files specified as arguments.")
 	flagX = flag.String("x", "", "Extract all or the specified files to the current directory. Use - to decompress stdin.")
 )
 
@@ -37,7 +37,7 @@ func create(fn string, args []string) error {
 		return fmt.Errorf("main.EmptyArgs (-o needs some filenames to put into the textar file)")
 	}
 
-	var ar []textar.File
+	var ar textar.Archive
 	for _, arg := range args {
 		err := filepath.Walk(arg, func(filename string, info fs.FileInfo, err error) error {
 			if err != nil {
@@ -50,7 +50,7 @@ func create(fn string, args []string) error {
 			if err != nil {
 				return err // io error contains both the action and error
 			}
-			ar = append(ar, textar.File{filename, data})
+			ar.Files = append(ar.Files, textar.File{filename, data})
 			return nil
 		})
 		if err != nil {
@@ -58,7 +58,7 @@ func create(fn string, args []string) error {
 		}
 	}
 
-	data := textar.Format(ar)
+	data := ar.Format()
 	if fn == "-" {
 		fn = "/dev/stdout"
 	}
@@ -74,9 +74,9 @@ func update(fn string, args []string) error {
 		return err // io error contains both the action and error
 	}
 
-	ar := textar.ParseOptions{ParseComments: true}.Parse(data)
+	ar := textar.Parse(data)
 	index := map[string]int{}
-	for i, f := range ar {
+	for i, f := range ar.Files {
 		index[f.Name] = i
 	}
 
@@ -93,9 +93,9 @@ func update(fn string, args []string) error {
 				return err // io error contains both the action and error
 			}
 			if i, exists := index[filename]; exists {
-				ar[i].Data = data
+				ar.Files[i].Data = data
 			} else {
-				index[arg], ar = len(arg), append(ar, textar.File{filename, data})
+				index[arg], ar.Files = len(arg), append(ar.Files, textar.File{filename, data})
 			}
 			return nil
 		})
@@ -104,11 +104,7 @@ func update(fn string, args []string) error {
 		}
 	}
 
-	fo := textar.FormatOptions{}
-	if len(data) > 0 {
-		fo.Separator = data[0]
-	}
-	return os.WriteFile(fn, fo.Format(ar), 0644) // io error contains both the action and error
+	return os.WriteFile(fn, ar.Format(), 0644) // io error contains both the action and error
 }
 
 func subdir(dir, file string) bool {
@@ -128,12 +124,12 @@ func extract(fn string, args []string) error {
 		return err // io error contains both the action and error
 	}
 
-	for _, f := range textar.Parse(data) {
+	for name, data := range textar.Parse(data).Range() {
 		ok := true
 		if len(args) > 0 {
 			ok = false
 			for _, a := range args {
-				if f.Name == a || subdir(a, f.Name) {
+				if name == a || subdir(a, name) {
 					ok = true
 					break
 				}
@@ -142,10 +138,10 @@ func extract(fn string, args []string) error {
 		if !ok {
 			continue
 		}
-		if err := os.MkdirAll(filepath.Dir(f.Name), 0755); err != nil {
+		if err := os.MkdirAll(filepath.Dir(name), 0755); err != nil {
 			return err // io error contains both the action and error
 		}
-		if err := os.WriteFile(f.Name, f.Data, 0644); err != nil {
+		if err := os.WriteFile(name, data, 0644); err != nil {
 			return err // io error contains both the action and error
 		}
 	}

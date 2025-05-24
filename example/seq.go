@@ -12,12 +12,12 @@ import (
 	"github.com/ypsu/textar"
 )
 
-//go:embed seq.textar
-var seqdata []byte
-
 func run() error {
-	archive := textar.ParseOptions{ParseComments: true}.Parse(seqdata)
-	for i, f := range archive {
+	archive, err := textar.ParseFile("seq.textar")
+	if err != nil {
+		return fmt.Errorf("seq.ParseFile: %v", err)
+	}
+	for i, f := range archive.Files {
 		if strings.HasPrefix(f.Name, "#") {
 			continue
 		}
@@ -26,9 +26,9 @@ func run() error {
 		if err != nil {
 			return err
 		}
-		archive[i].Data = output
+		archive.Files[i].Data = output
 	}
-	return os.WriteFile("seq.textar", textar.Format(archive), 0644)
+	return os.WriteFile("seq.textar", archive.Format(), 0644)
 }
 
 func main() {

@@ -1,12 +1,13 @@
 // Package textar encodes a file list (key-value slice) into a human editable text file and vice versa.
 // This is inspired by https://pkg.go.dev/golang.org/x/tools/txtar but this format can encode any content perfectly without issues.
 // Go's txtar doesn't handle newlines and content containing txtar markers well.
-// In textar each file in a textar is encoded via "[SEP] [NAME]\n[CONTENT]\n".
+// In textar each file is encoded via "[SEP] [NAME]\n[CONTENT]\n".
 // SEP is two or more = signs.
 // The first SEP can be arbitrary length, the rest must be the same length.
 // The first line beginning with == determines the separator length.
-// The dynamic SEP-lengtha makes it possible to encode and decode anything perfectly, this is the main advantage over Go's txtar.
-// Furthermore anything before the first SEP is free form comment.
+// The dynamic SEP-length makes it possible to encode and decode anything perfectly.
+// This is the main advantage over Go's txtar.
+// Furthermore anything before the first SEP is a free form comment.
 // Example:
 //
 //	Some comments here.

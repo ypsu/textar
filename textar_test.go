@@ -10,7 +10,7 @@ import (
 
 func TestTextar(t *testing.T) {
 	srcArchive := textar.Archive{
-		Comment: []byte("Test comment."),
+		Comment: []byte("== Test comment.\n== With bad marker."),
 		Files: []textar.File{
 			{"file1", []byte("content 1")},
 			{"file2", []byte("content 2\n")},
@@ -22,8 +22,8 @@ func TestTextar(t *testing.T) {
 	t.Logf("Encoded textar:\n%s", data)
 
 	dstArchive := textar.Parse(data)
-	if !bytes.Equal(dstArchive.Comment, srcArchive.Comment) {
-		t.Fatalf("textar_test.BadComment got=%q want=%q", dstArchive.Comment, srcArchive.Comment)
+	if want := []byte("X= Test comment.\nX= With bad marker."); !bytes.Equal(dstArchive.Comment, want) {
+		t.Fatalf("textar_test.BadComment got=%q want=%q", dstArchive.Comment, want)
 	}
 	if len(dstArchive.Files) != len(srcArchive.Files) {
 		t.Fatalf("textar_test.BadArchiveSize got=%d want=%d", len(dstArchive.Files), len(srcArchive.Files))

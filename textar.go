@@ -137,6 +137,15 @@ func (a *Archive) Format() []byte {
 	// Generate the archive.
 	p := &bytes.Buffer{}
 	p.Write(a.Comment)
+	d := p.Bytes()
+	if bytes.HasPrefix(d, []byte("=")) {
+		d[0] = 'X'
+	}
+	for i := 1; i < len(d); i++ {
+		if d[i-1] == '\n' && d[i] == '=' {
+			d[i] = 'X'
+		}
+	}
 	for i, f := range a.Files {
 		if i == 0 && len(a.Comment) == 0 {
 			p.Write(separator[1:])
